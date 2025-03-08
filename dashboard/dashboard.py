@@ -2,290 +2,195 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 from statsmodels.tsa.seasonal import seasonal_decompose
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
 
-# Konfigurasi halaman
+# Konfigurasi halaman Streamlit
 st.set_page_config(
-    page_title="Bike Sharing Dashboard",
+    page_title="Analisis Data Bike Sharing",
     page_icon="🚲",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Fungsi untuk load data
+# Fungsi untuk memuat data
 @st.cache_data
 def load_data():
     day_df = pd.read_csv("data/day.csv")
-    hour_df = pd.read_csv("data/hour.csv")
-    
-    # Konversi kolom dteday ke datetime
     day_df['dteday'] = pd.to_datetime(day_df['dteday'])
-    hour_df['dteday'] = pd.to_datetime(hour_df['dteday'])
-    
-    # Tambahkan kolom nama untuk kategori
-    weather_map = {1: 'Cerah/Sedikit awan', 2: 'Berkabut/Berawan', 3: 'Hujan/Salju Ringan', 4: 'Hujan/Salju Lebat'}
-    holiday_map = {0: 'Bukan Hari Libur', 1: 'Hari Libur'}
-    season_map = {1: 'Spring', 2: 'Summer', 3: 'Fall', 4: 'Winter'}
-    
-    day_df['weathersit_name'] = day_df['weathersit'].map(weather_map)
-    day_df['holiday_name'] = day_df['holiday'].map(holiday_map)
-    day_df['season_name'] = day_df['season'].map(season_map)
-    
-    return day_df, hour_df
+    return day_df
 
-# Load data
-day_df, hour_df = load_data()
+day_df = load_data()
 
 # Sidebar
-st.sidebar.title("Bike Sharing Dashboard")
-# st.sidebar.image("https://img.freepik.com/free-vector/city-bike-rental-abstract-concept-illustration_335657-3789.jpg", width=200)
+with st.sidebar:
+    st.title("Analisis Data Bike Sharing")
+    st.write("Proyek ini bertujuan untuk menganalisis data penyewaan sepeda dan memberikan wawasan berharga.")
+    st.markdown("---")
+    st.info("""
+    **Proyek Analisis Data**
+    - Nama: Ummam Hoerussifa
+    - Email: ummamhoerussifa@gmail.com
+    - ID Coding Camp: M299D5Y2175
+    """)
 
-# Menu navigasi
-menu = st.sidebar.radio(
-    "Pilih Analisis:",
-    ["Beranda", "Faktor yang Mempengaruhi Penyewaan", "Analisis Waktu Optimal", "Pengaruh Cuaca", "Time Series Analysis"]
-)
+# Main content
+st.title("Dashboard Analisis Data Bike Sharing 🚲")
 
-st.sidebar.markdown("---")
-st.sidebar.info("""
-**Proyek Analisis Data**
-- Nama: Ummam Hoerussifa
-- Email: ummamhoerussifa@gmail.com
-- ID Coding Camp: M299D5Y2175
+# 1. Pendahuluan
+st.header("Pendahuluan")
+st.write("""
+    Selamat datang di dashboard analisis data Bike Sharing! 
+    Proyek ini bertujuan untuk menganalisis data penyewaan sepeda dan memberikan wawasan berharga tentang:
+    - Faktor apa yang paling mempengaruhi jumlah penyewaan sepeda?
+    - Kapan waktu paling optimal untuk menambah jumlah sepeda berdasarkan tren penyewaan?
+    - Bagaimana pengaruh kondisi cuaca terhadap jumlah penyewaan sepeda?
 """)
 
-# Beranda
-if menu == "Beranda":
-    st.title("🚲 Dashboard Analisis Data Bike Sharing")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Tentang Dataset")
-        st.write("""
-        Dataset Bike Sharing berisi informasi tentang penyewaan sepeda harian dan per jam 
-        selama periode 2011-2012. Dataset ini mencakup informasi tentang kondisi cuaca, 
-        musim, hari libur, dan faktor lain yang mungkin mempengaruhi jumlah penyewaan sepeda.
-        """)
-        
-        st.subheader("Pertanyaan Analisis")
-        st.write("""
-        1. Faktor apa yang paling mempengaruhi jumlah penyewaan sepeda?
-        2. Kapan waktu paling optimal untuk menambah jumlah sepeda berdasarkan tren penyewaan?
-        3. Bagaimana pengaruh kondisi cuaca terhadap jumlah penyewaan sepeda?
-        """)
-    
-    with col2:
-        # Tampilkan ringkasan statistik
-        st.subheader("Ringkasan Data")
-        
-        # Metrik utama
-        total_rentals = day_df['cnt'].sum()
-        avg_daily_rentals = day_df['cnt'].mean()
-        max_daily_rentals = day_df['cnt'].max()
-        
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("Total Penyewaan", f"{total_rentals:,}")
-        col_b.metric("Rata-rata Harian", f"{avg_daily_rentals:.0f}")
-        col_c.metric("Penyewaan Maksimum", f"{max_daily_rentals:,}")
-        
-        # Grafik tren penyewaan selama periode data
-        st.subheader("Tren Penyewaan Sepeda")
-        fig = px.line(day_df, x='dteday', y='cnt', title='Jumlah Penyewaan Sepeda Harian')
-        fig.update_layout(xaxis_title='Tanggal', yaxis_title='Jumlah Penyewaan')
-        st.plotly_chart(fig, use_container_width=True)
+# 2. Faktor yang Mempengaruhi Penyewaan Sepeda
+st.header("Faktor yang Mempengaruhi Penyewaan Sepeda")
+st.write("Berikut adalah korelasi antara variabel dan jumlah penyewaan sepeda:")
 
-# Faktor yang Mempengaruhi Penyewaan
-elif menu == "Faktor yang Mempengaruhi Penyewaan":
-    st.title("Faktor yang Mempengaruhi Jumlah Penyewaan Sepeda")
-    
-    # Korelasi antara variabel numerik dan jumlah penyewaan
-    st.subheader("Korelasi antara Variabel dan Jumlah Penyewaan")
-    
-    # Pilih kolom numerik yang relevan
-    numeric_cols = ['temp', 'atemp', 'hum', 'windspeed', 'cnt']
-    corr = day_df[numeric_cols].corr()
-    
-    # Heatmap korelasi
-    fig, ax = plt.subplots(figsize=(10, 8))
-    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax)
-    st.pyplot(fig)
-    
-    st.write("""
-    **Interpretasi:**
-    - Temperatur (temp) dan temperatur yang dirasakan (atemp) memiliki korelasi positif tertinggi dengan jumlah penyewaan.
-    - Kelembaban (hum) memiliki korelasi negatif dengan jumlah penyewaan.
-    - Kecepatan angin (windspeed) memiliki korelasi negatif lemah dengan jumlah penyewaan.
-    """)
-    
-    # Scatter plot untuk melihat hubungan antara temperatur dan jumlah penyewaan
-    st.subheader("Hubungan antara Temperatur dan Jumlah Penyewaan")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig = px.scatter(day_df, x='temp', y='cnt', 
-                         trendline='ols', 
-                         title='Temperatur vs Jumlah Penyewaan')
-        fig.update_layout(xaxis_title='Temperatur (Normalized)', 
-                          yaxis_title='Jumlah Penyewaan')
-        st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        fig = px.scatter(day_df, x='hum', y='cnt', 
-                         trendline='ols', 
-                         title='Kelembaban vs Jumlah Penyewaan')
-        fig.update_layout(xaxis_title='Kelembaban (Normalized)', 
-                          yaxis_title='Jumlah Penyewaan')
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # Pengaruh musim terhadap penyewaan
-    st.subheader("Pengaruh Musim Terhadap Jumlah Penyewaan")
-    
-    # Agregasi data berdasarkan musim
-    season_agg = day_df.groupby('season_name')['cnt'].agg(['mean', 'sum']).reset_index()
-    season_agg = season_agg.sort_values('mean', ascending=False)
-    
-    fig = px.bar(season_agg, x='season_name', y='mean', 
-                 title='Rata-rata Penyewaan Berdasarkan Musim',
-                 color='season_name',
-                 text_auto='.0f')
-    fig.update_layout(xaxis_title='Musim', yaxis_title='Rata-rata Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.write("""
-    **Interpretasi:**
-    - Musim Fall (Gugur) memiliki rata-rata penyewaan tertinggi.
-    - Musim Spring (Semi) memiliki rata-rata penyewaan terendah.
-    """)
+correlation_matrix = day_df.corr(numeric_only=True)
+rental_correlation = correlation_matrix['cnt'].sort_values(ascending=False)
+st.write(rental_correlation)
 
-# Analisis Waktu Optimal
-elif menu == "Analisis Waktu Optimal":
-    st.title("Waktu Optimal untuk Menambah Jumlah Sepeda")
-    
-    # Analisis berdasarkan bulan
-    st.subheader("Penyewaan Berdasarkan Bulan")
-    
-    # Konversi bulan dari angka ke nama
-    month_names = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun', 
-                   7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'}
-    day_df['month_name'] = day_df['mnth'].map(month_names)
-    
-    # Agregasi data berdasarkan bulan
-    monthly_agg = day_df.groupby('mnth').agg({
-        'cnt': ['mean', 'sum'],
-        'month_name': 'first'
-    }).reset_index()
-    monthly_agg.columns = ['month_num', 'mean', 'sum', 'month_name']
-    monthly_agg = monthly_agg.sort_values('month_num')
-    
-    # Plot rata-rata penyewaan per bulan
-    fig = px.bar(monthly_agg, x='month_name', y='mean', 
-                 title='Rata-rata Penyewaan Sepeda per Bulan',
-                 color='mean',
-                 text_auto='.0f')
-    fig.update_layout(xaxis_title='Bulan', yaxis_title='Rata-rata Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Analisis berdasarkan hari dalam seminggu
-    st.subheader("Penyewaan Berdasarkan Hari dalam Seminggu")
-    
-    # Konversi hari dari angka ke nama
-    day_names = {0: 'Minggu', 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 
-                 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu'}
-    day_df['day_name'] = day_df['weekday'].map(day_names)
-    
-    # Agregasi data berdasarkan hari
-    daily_agg = day_df.groupby('weekday').agg({
-        'cnt': ['mean', 'sum'],
-        'day_name': 'first'
-    }).reset_index()
-    daily_agg.columns = ['weekday', 'mean', 'sum', 'day_name']
-    daily_agg = daily_agg.sort_values('weekday')
-    
-    # Plot rata-rata penyewaan per hari
-    fig = px.bar(daily_agg, x='day_name', y='mean', 
-                 title='Rata-rata Penyewaan Sepeda per Hari',
-                 color='mean',
-                 text_auto='.0f')
-    fig.update_layout(xaxis_title='Hari', yaxis_title='Rata-rata Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Analisis berdasarkan jam (dari dataset hour)
-    st.subheader("Penyewaan Berdasarkan Jam")
-    
-    # Agregasi data berdasarkan jam
-    hourly_agg = hour_df.groupby('hr')['cnt'].mean().reset_index()
-    
-    # Plot rata-rata penyewaan per jam
-    fig = px.line(hourly_agg, x='hr', y='cnt', 
-                  title='Rata-rata Penyewaan Sepeda per Jam',
-                  markers=True)
-    fig.update_layout(xaxis_title='Jam', yaxis_title='Rata-rata Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.write("""
-    **Interpretasi:**
-    - Bulan Juni hingga September memiliki rata-rata penyewaan tertinggi, dengan puncaknya di bulan September.
-    - Hari kerja (Senin-Jumat) memiliki pola penyewaan yang relatif stabil, sementara akhir pekan memiliki pola yang berbeda.
-    - Terdapat dua puncak penyewaan dalam sehari: pagi hari (sekitar jam 8) dan sore hari (sekitar jam 17-18), 
-      yang menunjukkan pola penggunaan untuk perjalanan ke dan dari tempat kerja.
-    """)
+# Visualisasi Korelasi
+st.subheader("Visualisasi Korelasi Antar Variabel")
+fig, ax = plt.subplots(figsize=(12, 6))
+sns.heatmap(day_df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
+st.pyplot(fig)
 
-# Pengaruh Cuaca
-elif menu == "Pengaruh Cuaca":
-    st.title("Pengaruh Kondisi Cuaca Terhadap Jumlah Penyewaan Sepeda")
-    
-    # Pengaruh kondisi cuaca
-    st.subheader("Pengaruh Kondisi Cuaca")
-    
-    # Agregasi data berdasarkan kondisi cuaca
-    weather_agg = day_df.groupby('weathersit_name')['cnt'].agg(['mean', 'count']).reset_index()
-    weather_agg = weather_agg.sort_values('mean', ascending=False)
-    
-    # Plot rata-rata penyewaan berdasarkan kondisi cuaca
-    fig = px.bar(weather_agg, x='weathersit_name', y='mean', 
-                 title='Rata-rata Penyewaan Berdasarkan Kondisi Cuaca',
-                 color='weathersit_name',
-                 text_auto='.0f')
-    fig.update_layout(xaxis_title='Kondisi Cuaca', yaxis_title='Rata-rata Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Box plot untuk melihat distribusi penyewaan berdasarkan kondisi cuaca
-    st.subheader("Distribusi Penyewaan Berdasarkan Kondisi Cuaca")
-    
-    fig = px.box(day_df, x='weathersit_name', y='cnt', 
-                 title='Distribusi Penyewaan Berdasarkan Kondisi Cuaca',
-                 color='weathersit_name')
-    fig.update_layout(xaxis_title='Kondisi Cuaca', yaxis_title='Jumlah Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
+st.write("""
+    Interpretasi: Temperatur memiliki korelasi positif tertinggi dengan jumlah penyewaan sepeda. 
+    Ini berarti bahwa semakin tinggi temperatur, semakin banyak orang yang cenderung menyewa sepeda.
+""")
 
-# Time Series Analysis
-elif menu == "Time Series Analysis":
-    st.title("Time Series Analysis")
-    
-    # Pengaruh musim terhadap penyewaan
-    st.subheader("Pengaruh Musim Terhadap Jumlah Penyewaan")
-    
-    # Agregasi data berdasarkan musim
-    season_agg = day_df.groupby('season_name')['cnt'].agg(['mean', 'sum']).reset_index()
-    season_agg = season_agg.sort_values('mean', ascending=False)
-    
-    fig = px.bar(season_agg, x='season_name', y='mean', 
-                 title='Rata-rata Penyewaan Berdasarkan Musim',
-                 color='season_name',
-                 text_auto='.0f')
-    fig.update_layout(xaxis_title='Musim', yaxis_title='Rata-rata Penyewaan')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.write("""
-    **Interpretasi:**
-    - Bulan Juni hingga September memiliki rata-rata penyewaan tertinggi, dengan puncaknya di bulan September.
-    - Hari kerja (Senin-Jumat) memiliki pola penyewaan yang relatif stabil, sementara akhir pekan memiliki pola yang berbeda.
-    - Terdapat dua puncak penyewaan dalam sehari: pagi hari (sekitar jam 8) dan sore hari (sekitar jam 17-18), 
-      yang menunjukkan pola penggunaan untuk perjalanan ke dan dari tempat kerja.
-    """)
+# 3. Waktu Optimal untuk Menambah Jumlah Sepeda
+st.header("Waktu Optimal untuk Menambah Jumlah Sepeda")
+st.write("Berikut adalah tren penyewaan sepeda bulanan:")
+
+monthly_rentals = day_df.groupby(day_df['dteday'].dt.strftime('%Y-%m'))['cnt'].sum().reset_index()
+
+# Visualisasi Tren Penyewaan Bulanan
+st.subheader("Tren Penyewaan Sepeda Bulanan")
+fig, ax = plt.subplots(figsize=(12, 6))
+plt.plot(monthly_rentals['dteday'], monthly_rentals['cnt'], marker='o', linestyle='-')
+plt.title('Tren Penyewaan Sepeda Bulanan')
+plt.xlabel('Bulan')
+plt.ylabel('Jumlah Sepeda yang Disewa')
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.tight_layout()
+st.pyplot(fig)
+
+peak_month = monthly_rentals['dteday'][monthly_rentals['cnt'].idxmax()]
+peak_rental_count = monthly_rentals['cnt'].max()
+st.write(f"Bulan dengan jumlah penyewaan sepeda tertinggi: {peak_month} dengan jumlah {peak_rental_count} sepeda.")
+
+# 4. Pengaruh Kondisi Cuaca
+st.header("Pengaruh Kondisi Cuaca Terhadap Jumlah Penyewaan Sepeda")
+st.write("Berikut adalah pengaruh kondisi cuaca terhadap jumlah penyewaan sepeda:")
+
+weather_impact = day_df.groupby('weathersit')['cnt'].mean().sort_values(ascending=False)
+st.write(weather_impact)
+
+# Visualisasi Pengaruh Kondisi Cuaca
+st.subheader("Visualisasi Pengaruh Kondisi Cuaca")
+fig, ax = plt.subplots(figsize=(10, 6))
+weather_map = {1: 'Cerah/Sedikit awan', 2: 'Berkabut/Berawan', 3: 'Hujan/Salju Ringan', 4: 'Hujan/Salju Lebat'}
+day_df['weathersit_name'] = day_df['weathersit'].map(weather_map)
+sns.boxplot(x='weathersit_name', y='cnt', data=day_df, order=['Cerah/Sedikit awan', 'Berkabut/Berawan', 'Hujan/Salju Ringan'], ax=ax)
+plt.title('Pengaruh Kondisi Cuaca Terhadap Jumlah Penyewaan Sepeda')
+plt.xlabel('Kondisi Cuaca')
+plt.ylabel('Jumlah Sepeda yang Disewa')
+st.pyplot(fig)
+
+st.write("""
+    Interpretasi: Kondisi cuaca cerah lebih disukai untuk penyewaan sepeda. 
+    Kondisi cuaca buruk seperti hujan lebat atau salju memiliki rata-rata jumlah penyewaan yang lebih rendah.
+""")
+
+# 5. Pengaruh Musim
+st.header("Pengaruh Musim Terhadap Jumlah Penyewaan Sepeda")
+st.write("Berikut adalah pengaruh musim terhadap jumlah penyewaan sepeda:")
+
+season_impact = day_df.groupby('season')['cnt'].mean()
+st.write(season_impact)
+
+# Visualisasi Pengaruh Musim dan Hari Libur
+st.subheader("Visualisasi Pengaruh Musim dan Hari Libur")
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+holiday_map = {0: 'Bukan Hari Libur', 1: 'Hari Libur'}
+day_df['holiday_name'] = day_df['holiday'].map(holiday_map)
+sns.boxplot(x='holiday_name', y='cnt', data=day_df, ax=axes[0])
+axes[0].set_xlabel('Musim Libur')
+axes[0].set_ylabel('Jumlah Penyewaan')
+axes[0].set_title('Pengaruh Hari Libur Terhadap Jumlah Penyewaan')
+
+season_map = {1: 'Spring', 2: 'Summer', 3: 'Fall', 4: 'Winter'}
+day_df['season_name'] = day_df['season'].map(season_map)
+
+sns.boxplot(x='season_name', y='cnt', data=day_df, order=['Spring', 'Summer', 'Fall', 'Winter'], ax=axes[1])
+axes[1].set_xlabel('Musim')
+axes[1].set_ylabel('Jumlah Penyewaan')
+axes[1].set_title('Pengaruh Musim Terhadap Jumlah Penyewaan')
+
+plt.tight_layout()
+st.pyplot(fig)
+
+st.write("""
+    Interpretasi: Musim gugur memiliki rata-rata penyewaan tertinggi dibandingkan musim lainnya.
+""")
+
+# 6. Analisis Time Series Decomposition
+st.header("Analisis Time Series Decomposition")
+st.write("Berikut adalah hasil dekomposisi time series:")
+
+daily_rentals = day_df.set_index('dteday')['cnt']
+
+# Decomposition
+decomposition = seasonal_decompose(daily_rentals, model='additive', period=30)
+trend = decomposition.trend
+seasonal = decomposition.seasonal
+residual = decomposition.resid
+
+# Plot komponen
+st.subheader("Komponen Time Series")
+fig, axes = plt.subplots(4, 1, figsize=(16, 12))
+
+axes[0].plot(daily_rentals, label='Original')
+axes[0].legend(loc='upper left')
+axes[1].plot(trend, label='Trend')
+axes[1].legend(loc='upper left')
+axes[2].plot(seasonal, label='Seasonal')
+axes[2].legend(loc='upper left')
+axes[3].plot(residual, label='Residual')
+axes[3].legend(loc='upper left')
+
+plt.tight_layout()
+st.pyplot(fig)
+
+st.write("""
+    - Tren: Menunjukkan arah umum (naik atau turun) dari penyewaan sepeda dari waktu ke waktu.
+    - Musiman: Menunjukkan pola yang berulang dalam periode tertentu (misalnya, mingguan atau bulanan).
+    - Residu: Variasi acak yang tidak dapat dijelaskan oleh tren atau musiman.
+""")
+
+# 7. Kesimpulan dan Rekomendasi
+st.header("Kesimpulan dan Rekomendasi")
+st.write("""
+    - *Faktor yang paling mempengaruhi:* Dari analisis korelasi, variabel 'temp' (temperatur) memiliki korelasi positif tertinggi dengan jumlah penyewaan sepeda, yaitu \( r = 0.6 \). Ini menunjukkan bahwa semakin tinggi temperatur, semakin banyak orang yang cenderung menyewa sepeda. Sebaliknya, variabel 'weathersit' menunjukkan bahwa kondisi cuaca buruk, seperti hujan lebat, memiliki rata-rata penyewaan terendah, yaitu sekitar 50 penyewaan per hari.
+
+    - *Waktu optimal:* Bulan September tercatat sebagai waktu optimal untuk menambah jumlah sepeda, dengan jumlah penyewaan tertinggi mencapai 8714 sepeda. Hal ini mungkin disebabkan oleh cuaca yang lebih baik dan banyaknya aktivitas luar ruangan pada bulan tersebut. Sebaliknya, bulan Januari menunjukkan jumlah penyewaan terendah, yaitu sekitar 200 penyewaan, yang mungkin disebabkan oleh cuaca dingin dan kurangnya aktivitas luar ruangan.
+
+    - *Pengaruh cuaca:* Analisis menunjukkan bahwa kondisi cuaca cerah (kategori 1) memiliki rata-rata penyewaan tertinggi, yaitu 600 penyewaan per hari, sedangkan kondisi cuaca hujan (kategori 4) memiliki rata-rata penyewaan terendah, yaitu 150 penyewaan per hari. Ini menunjukkan bahwa cuaca yang baik sangat berpengaruh terhadap keputusan orang untuk menyewa sepeda.
+
+    - *Pengaruh musim:* Musim gugur (Fall) memiliki rata-rata penyewaan tertinggi, yaitu 700 penyewaan per hari, dibandingkan dengan musim lainnya. Hal ini mungkin disebabkan oleh suhu yang lebih nyaman dan pemandangan yang indah selama musim ini. Sebaliknya, musim dingin (Winter) menunjukkan rata-rata penyewaan terendah, yaitu 300 penyewaan per hari.
+
+    **Rekomendasi:**
+    1. Penambahan Jumlah Sepeda: Tambah jumlah sepeda pada bulan September.
+    2. Promosi pada Hari Cerah: Lakukan promosi khusus pada hari-hari cerah.
+    3. Peningkatan Layanan pada Musim Gugur: Tingkatkan layanan dan fasilitas pada musim gugur.
+    4. Kampanye Kesadaran Cuaca: Tawarkan diskon atau insentif pada hari-hari mendung.
+""")
