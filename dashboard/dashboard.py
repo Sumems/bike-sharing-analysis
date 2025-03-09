@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from statsmodels.tsa.seasonal import seasonal_decompose
+from datetime import datetime
 
 # Konfigurasi halaman Streamlit
 st.set_page_config(
@@ -32,6 +33,47 @@ with st.sidebar:
     - Email: ummamhoerussifa@gmail.com
     - ID Coding Camp: M299D5Y2175
     """)
+
+    # Sidebar untuk filter interaktif
+    st.title("Filter Data")
+    
+    # Filter berdasarkan tanggal
+    start_date = st.date_input("Tanggal Mulai", value=datetime(2011, 1, 1))
+    end_date = st.date_input("Tanggal Akhir", value=datetime(2012, 12, 31))
+    
+    # Filter berdasarkan musim
+    season_options = {
+        1: 'Spring',
+        2: 'Summer',
+        3: 'Fall',
+        4: 'Winter'
+    }
+    selected_season = st.selectbox("Pilih Musim", options=list(season_options.values()))
+    
+    # Filter berdasarkan kondisi cuaca
+    weather_options = {
+        1: 'Cerah/Sedikit awan',
+        2: 'Berkabut/Berawan',
+        3: 'Hujan/Salju Ringan',
+        4: 'Hujan/Salju Lebat'
+    }
+    selected_weather = st.selectbox("Pilih Kondisi Cuaca", options=list(weather_options.values()))
+
+# Mengonversi pilihan musim dan cuaca ke dalam format yang sesuai
+season_mapping = {v: k for k, v in season_options.items()}
+weather_mapping = {v: k for k, v in weather_options.items()}
+
+# Filter data berdasarkan input pengguna
+filtered_data = day_df[
+    (day_df['dteday'] >= pd.to_datetime(start_date)) &
+    (day_df['dteday'] <= pd.to_datetime(end_date)) &
+    (day_df['season'] == season_mapping[selected_season]) &
+    (day_df['weathersit'] == weather_mapping[selected_weather])
+]
+
+# Menampilkan data yang difilter
+st.write("Data yang difilter:")
+st.write(filtered_data)
 
 # Main content
 st.title("Dashboard Analisis Data Bike Sharing 🚲")
