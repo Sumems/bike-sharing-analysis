@@ -43,21 +43,34 @@ with st.sidebar:
     
     # Filter berdasarkan musim
     season_options = {
+        0: 'All Seasons',  # Option for all seasons
         1: 'Spring',
         2: 'Summer',
         3: 'Fall',
         4: 'Winter'
     }
     selected_season = st.selectbox("Pilih Musim", options=list(season_options.values()))
-    
+
     # Filter berdasarkan kondisi cuaca
     weather_options = {
+        0: 'All Weather',  # Option for all weather conditions
         1: 'Cerah/Sedikit awan',
         2: 'Berkabut/Berawan',
         3: 'Hujan/Salju Ringan',
         4: 'Hujan/Salju Lebat'
     }
     selected_weather = st.selectbox("Pilih Kondisi Cuaca", options=list(weather_options.values()))
+    
+    # Note about visualizations affected by filters
+    st.markdown("---")
+    st.write("### Visualisasi yang Terpengaruh oleh Filter:")
+    st.write("""
+    - Korelasi antara variabel dan jumlah penyewaan sepeda
+    - Tren penyewaan sepeda bulanan
+    - Pengaruh kondisi cuaca terhadap jumlah penyewaan sepeda
+    - Pengaruh musim terhadap jumlah penyewaan sepeda
+    - Analisis time series decomposition
+    """)
 
 # Mengonversi pilihan musim dan cuaca ke dalam format yang sesuai
 season_mapping = {v: k for k, v in season_options.items()}
@@ -67,16 +80,16 @@ weather_mapping = {v: k for k, v in weather_options.items()}
 filtered_data = day_df[
     (day_df['dteday'] >= pd.to_datetime(start_date)) &
     (day_df['dteday'] <= pd.to_datetime(end_date)) &
-    (day_df['season'] == season_mapping[selected_season]) &
-    (day_df['weathersit'] == weather_mapping[selected_weather])
+    ((day_df['season'] == season_mapping[selected_season]) | (season_mapping[selected_season] == 0)) &  # Allow all seasons
+    ((day_df['weathersit'] == weather_mapping[selected_weather]) | (weather_mapping[selected_weather] == 0))  # Allow all weather conditions
 ]
-
-# Menampilkan data yang difilter
-st.write("Data yang difilter:")
-st.write(filtered_data)
 
 # Main content
 st.title("Dashboard Analisis Data Bike Sharing 🚲")
+
+# Menampilkan data yang difilter
+st.header("Data yang difilter:")
+st.write(filtered_data)
 
 # 1. Pendahuluan
 st.header("Pendahuluan")
@@ -92,14 +105,14 @@ st.write("""
 st.header("Faktor yang Mempengaruhi Penyewaan Sepeda")
 st.write("Berikut adalah korelasi antara variabel dan jumlah penyewaan sepeda:")
 
-correlation_matrix = day_df.corr(numeric_only=True)
+correlation_matrix = filtered_data.corr(numeric_only=True)  # Use filtered_data here
 rental_correlation = correlation_matrix['cnt'].sort_values(ascending=False)
 st.write(rental_correlation)
 
 # Visualisasi Korelasi
 st.subheader("Visualisasi Korelasi Antar Variabel")
 fig, ax = plt.subplots(figsize=(12, 6))
-sns.heatmap(day_df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
+sns.heatmap(filtered_data.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)  # Use filtered_data here
 st.pyplot(fig)
 
 st.write("""
@@ -111,7 +124,7 @@ st.write("""
 st.header("Waktu Optimal untuk Menambah Jumlah Sepeda")
 st.write("Berikut adalah tren penyewaan sepeda bulanan:")
 
-monthly_rentals = day_df.groupby(day_df['dteday'].dt.strftime('%Y-%m'))['cnt'].sum().reset_index()
+monthly_rentals = filtered_data.groupby(filtered_data['dteday'].dt.strftime('%Y-%m'))['cnt'].sum().reset_index()  # Use filtered_data here
 
 # Visualisasi Tren Penyewaan Bulanan
 st.subheader("Tren Penyewaan Sepeda Bulanan")
@@ -133,8 +146,9 @@ st.write(f"Bulan dengan jumlah penyewaan sepeda tertinggi: {peak_month} dengan j
 st.header("Pengaruh Kondisi Cuaca Terhadap Jumlah Penyewaan Sepeda")
 st.write("Berikut adalah pengaruh kondisi cuaca terhadap jumlah penyewaan sepeda:")
 
-weather_impact = day_df.groupby('weathersit')['cnt'].mean().sort_values(ascending=False)
+weather_impact = filtered_data.groupby('weathersit')['cnt'].mean().sort_values(ascending=False)  # Use filtered_data here
 st.write(weather_impact)
+
 
 # Visualisasi Pengaruh Kondisi Cuaca
 st.subheader("Visualisasi Pengaruh Kondisi Cuaca")
@@ -156,8 +170,9 @@ st.write("""
 st.header("Pengaruh Musim Terhadap Jumlah Penyewaan Sepeda")
 st.write("Berikut adalah pengaruh musim terhadap jumlah penyewaan sepeda:")
 
-season_impact = day_df.groupby('season')['cnt'].mean()
+season_impact = filtered_data.groupby('season')['cnt'].mean()  # Use filtered_data here
 st.write(season_impact)
+
 
 # Visualisasi Pengaruh Musim dan Hari Libur
 st.subheader("Visualisasi Pengaruh Musim dan Hari Libur")
@@ -189,7 +204,7 @@ st.write("""
 st.header("Analisis Time Series Decomposition")
 st.write("Berikut adalah hasil dekomposisi time series:")
 
-daily_rentals = day_df.set_index('dteday')['cnt']
+daily_rentals = filtered_data.set_index('dteday')['cnt']  # Use filtered_data here
 
 # Decomposition
 decomposition = seasonal_decompose(daily_rentals, model='additive', period=30)
